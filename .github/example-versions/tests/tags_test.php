@@ -30,3 +30,25 @@ function test_resolve_tag_no_images_for_minor_returns_null(): void
 {
     assert_same(null, resolve_tag('8.7.0', ['8.6.0']));
 }
+
+function test_cli_versions_keeps_only_plain_cli_tags(): void
+{
+    assert_same(
+        ['8.4.8', '8.6.0RC4'],
+        cli_versions(['8.4.8-cli', '8.4.8-cli-alpine', '8.4-cli', '8.4.8-zts', '8.6.0RC4-cli', '8.4.8-cli']),
+    );
+}
+
+function test_filter_by_minors_does_not_match_longer_minor(): void
+{
+    assert_same(['8.1.2', '5.3.29'], filter_by_minors(['8.1.2', '8.10.0', '5.3.29', '7.4.1'], ['8.1', '5.3']));
+}
+
+function test_next_page_path_reads_link_header(): void
+{
+    assert_same(
+        '/v2/library/php/tags/list?last=8.4&n=10000',
+        next_page_path(['HTTP/1.1 200 OK', 'link: </v2/library/php/tags/list?last=8.4&n=10000>; rel="next"']),
+    );
+    assert_same(null, next_page_path(['HTTP/1.1 200 OK']));
+}

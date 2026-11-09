@@ -39,24 +39,76 @@ function newest_tag(array $sortedVersions): ?array
 
 function fetch_available_tags(array $minors): array
 {
-    $context = stream_context_create(['http' => ['header' => 'User-Agent: example-versions']]);
-    $versions = [];
+    return filter_by_minors(cli_versions(fetch_registry_tags()), $minors);
+}
 
-    foreach ($minors as $minor) {
-        $url = 'https://hub.docker.com/v2/repositories/library/php/tags?page_size=100&name=' . urlencode($minor . '.');
-
-        while ($url !== null) {
-            $page = json_decode(file_get_contents($url, false, $context), true, flags: JSON_THROW_ON_ERROR);
-
-            foreach ($page['results'] as $result) {
-                if (preg_match('/^(\d+\.\d+\.\d+(?:RC\d+)?)-cli$/', $result['name'], $matches)) {
-                    $versions[] = $matches[1];
+function filter_by_minors(array $versions, array $minors): array
+{
+    return array_values(array_filter(
+        $versions,
+        function (string $version) use ($minors): bool {
+            foreach ($minors as $minor) {
+                if (str_starts_with($version, $minor . '.')) {
+                    return true;
                 }
             }
 
-            $url = $page['next'] ?? null;
+            return false;
+        },
+    ));
+}
+
+function cli_versions(array $tags): array
+{
+    $versions = [];
+
+    foreach ($tags as $tag) {
+        if (preg_match('/^(\d+\.\d+\.\d+(?:RC\d+)?)-cli$/', $tag, $matches)) {
+            $versions[] = $matches[1];
         }
     }
 
     return array_values(array_unique($versions));
+}
+
+function fetch_registry_tags(): array
+{
+    $registry = 'https://registry-1.docker.io';
+    $token = fetch_json(
+        'https://auth.docker.io/token?service=registry.docker.io&scope=repository:library/php:pull',
+    )['token'];
+    $path = '/v2/library/php/tags/list?n=10000';
+    $tags = [];
+
+    while ($path !== null) {
+        $tags = [...$tags, ...fetch_json($registry . $path, ['Authorization: Bearer ' . $token])['tags']];
+        $path = next_page_path(http_get_last_response_headers() ?? []);
+    }
+
+    return $tags;
+}
+
+function fetch_json(string $url, array $headers = []): array
+{
+    $context = stream_context_create(['http' => [
+        'header' => implode("\r\n", ['User-Agent: example-versions', ...$headers]),
+    ]]);
+    $body = file_get_contents($url, false, $context);
+
+    if ($body === false) {
+        throw new RuntimeException('Failed to fetch ' . $url);
+    }
+
+    return json_decode($body, true, flags: JSON_THROW_ON_ERROR);
+}
+
+function next_page_path(array $responseHeaders): ?string
+{
+    foreach ($responseHeaders as $header) {
+        if (preg_match('/^Link:\s*<([^>]+)>/i', $header, $matches)) {
+            return $matches[1];
+        }
+    }
+
+    return null;
 }

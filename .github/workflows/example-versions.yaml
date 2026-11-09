@@ -187,7 +187,7 @@ jobs:
 
   report:
     name: "Report"
-    if: "always() && github.repository == 'cookieguru/doc-en'"
+    if: "${{ !cancelled() && needs.extract.result == 'success' && github.repository == 'cookieguru/doc-en' }}"
     needs:
       - "extract"
       - "run"
