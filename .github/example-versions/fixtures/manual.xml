@@ -1,0 +1,168 @@
+<?xml version="1.0" encoding="utf-8"?>
+<book xmlns="http://docbook.org/ns/docbook" xml:id="manual">
+ <refentry xml:id="dom-parentnode.append">
+  <refnamediv>
+   <refname>Dom\ParentNode::append</refname>
+   <refpurpose>Appends nodes after the last child node</refpurpose>
+  </refnamediv>
+  <refsect1 role="examples">
+   <title>Examples</title>
+   <example xml:id="dom-parentnode.append.example.basic">
+    <title><methodname>Dom\ParentNode::append</methodname> example</title>
+    <programlisting role="php">
+<![CDATA[
+<?php
+$dom = Dom\HTMLDocument::createFromString(
+    '<!DOCTYPE html><body><ul id="list"><li>One</li></ul></body>',
+    LIBXML_NOERROR
+);
+
+$list = $dom->getElementById('list');
+
+$li = $dom->createElement('li');
+$li->textContent = 'Three';
+$list->append('Two', $li);
+
+echo $list->outerHTML, "\n";
+?>
+]]>
+    </programlisting>
+    <para>The above example will output:</para>
+    <screen>
+<![CDATA[
+<ul><li>One</li>Two<li>Three</li></ul>
+]]>
+    </screen>
+   </example>
+  </refsect1>
+ </refentry>
+
+ <refentry xml:id="dom-htmldocument.savehtmlfile">
+  <refnamediv>
+   <refname>Dom\HTMLDocument::saveHtmlFile</refname>
+   <refpurpose>Serializes the document as an HTML file</refpurpose>
+  </refnamediv>
+  <refsect1 role="examples">
+   <title>Examples</title>
+   <example>
+    <title><methodname>Dom\HTMLDocument::saveHtmlFile</methodname> example</title>
+    <simpara>Serializes a document to an HTML file.</simpara>
+    <programlisting role="php">
+<![CDATA[
+<?php
+$dom = Dom\HTMLDocument::createFromString('<!DOCTYPE html><p>Hello, world!</p>');
+$bytes = $dom->saveHtmlFile('/path/to/output.html');
+echo "Saved $bytes bytes\n";
+var_dump($bytes);
+?>
+]]>
+    </programlisting>
+    <para>The above example will output:</para>
+    <screen>
+<![CDATA[
+Saved 60 bytes
+int(60)
+]]>
+    </screen>
+   </example>
+  </refsect1>
+ </refentry>
+
+ <refentry xml:id="function.dup-func">
+  <refnamediv>
+   <refname>dup_func</refname>
+   <refpurpose>Declared in two reference directories</refpurpose>
+  </refnamediv>
+  <refsect1 role="examples">
+   <title>Examples</title>
+   <example>
+    <title>A non-interactive example</title>
+    <programlisting role="php" annotations="non-interactive">
+<![CDATA[
+<?php
+echo dup_func();
+]]>
+    </programlisting>
+   </example>
+   <example>
+    <title>An example with two listings</title>
+    <programlisting role="php">
+<![CDATA[
+<?php
+$a = 1;
+]]>
+    </programlisting>
+    <programlisting role="php">
+<![CDATA[
+<?php
+echo $a ?? 'unset';
+]]>
+    </programlisting>
+    <screen>
+<![CDATA[
+unset
+]]>
+    </screen>
+   </example>
+  </refsect1>
+ </refentry>
+
+ <refentry xml:id="function.new-in-53">
+  <refnamediv>
+   <refname>new_in_53</refname>
+   <refpurpose>Introduced in PHP 5.3.0</refpurpose>
+  </refnamediv>
+  <refsect1 role="examples">
+   <title>Examples</title>
+   <example>
+    <title>A new_in_53 example</title>
+    <programlisting role="php">
+<![CDATA[
+<?php echo strlen('abc');
+]]>
+    </programlisting>
+    <screen>
+<![CDATA[
+3
+]]>
+    </screen>
+   </example>
+  </refsect1>
+ </refentry>
+
+ <refentry xml:id="function.old-func">
+  <refnamediv>
+   <refname>old_func</refname>
+   <refpurpose>Introduced before PHP 5.3.0</refpurpose>
+  </refnamediv>
+  <refsect1 role="examples">
+   <title>Examples</title>
+   <example>
+    <title>An old_func example</title>
+    <programlisting role="php">
+<![CDATA[
+<?php echo 'old';
+]]>
+    </programlisting>
+   </example>
+  </refsect1>
+ </refentry>
+
+ <refentry xml:id="function.no-versions">
+  <refnamediv>
+   <refname>nowhere</refname>
+   <refpurpose>Absent from every versions.xml</refpurpose>
+  </refnamediv>
+  <refsect1 role="examples">
+   <title>Examples</title>
+   <example>
+    <title>A nowhere example</title>
+    <programlisting role="php">
+<![CDATA[
+<?php echo 'nowhere';
+]]>
+    </programlisting>
+   </example>
+  </refsect1>
+ </refentry>
+</book>
