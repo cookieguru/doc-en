@@ -182,6 +182,7 @@ function truncate_summary(string $markdown, int $limitBytes): string
     return substr($head, 0, $lastBreak === false ? 0 : $lastBreak) . "\n\n_Truncated; see the report artifact._";
 }
 
+const ISSUE_BODY_LIMIT_BYTES = 60000;
 const ISSUE_LABEL = 'example-versions';
 const ISSUE_OUTPUT_ONLY_LABEL = 'output-only';
 const ISSUE_PASSING_STATUSES = ['pass', 'skipped-extension'];
@@ -229,9 +230,9 @@ function plan_issues(array $results, array $openIssues): array
         $issue = [
             'page' => $page,
             'title' => "Example fails on minimum PHP version: $page",
-            'body' => issue_marker($page) . "
+            'body' => truncate_summary(issue_marker($page) . "
 
-" . render_result_table($failures),
+" . render_result_table($failures), ISSUE_BODY_LIMIT_BYTES),
             'labels' => $outputOnly ? [ISSUE_LABEL, ISSUE_OUTPUT_ONLY_LABEL] : [ISSUE_LABEL],
         ];
         $plan[] = $number === null
