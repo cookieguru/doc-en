@@ -9,7 +9,7 @@ function test_iterate_examples_reads_ids_code_and_screen(): void
     assert_same('dom-parentnode.append.example.basic', $append['example']);
     assert_same(true, str_contains($append['code'], '$list->outerHTML'));
     assert_same('', $append['annotations']);
-    assert_same(true, str_contains($append['expected'], '<ul>'));
+    assert_same(true, str_contains($append['expected'], '<ul id="list">'));
     assert_same('dom-htmldocument.savehtmlfile#1', $examples[1]['example']);
 }
 
