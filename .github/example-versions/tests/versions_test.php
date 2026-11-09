@@ -9,6 +9,9 @@ function test_parse_minimum_shapes(): void
     assert_same('8.4.0', parse_minimum('PHP 8 >= 8.4.0'));
     assert_same('5.3.0', parse_minimum('PHP 5 >= 5.3.0, PHP 7, PHP 8, PECL intl >= 1.0.0'));
     assert_same('4.0.1', parse_minimum('PHP 4 >= 4.0.1, PHP 5'));
+    assert_same('8.4.0', parse_minimum('PHP >= 8.4.0'));
+    assert_same('5.3.0', parse_minimum('PHP >= 5.3.0, PHP 7, PHP 8, PECL fileinfo >= 0.1.0'));
+    assert_same('8.3.0', parse_minimum('PHP >= 8.3'));
     assert_same(null, parse_minimum('PECL event >= 1.0.0-beta'));
 }
 

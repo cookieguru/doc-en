@@ -4,8 +4,11 @@ function parse_minimum(string $from): ?string
 {
     foreach (explode(',', $from) as $segment) {
         $segment = trim($segment);
-        if (preg_match('/^PHP\s+(\d+(?:\.\d+)*)(?:\s*>=\s*(\d+(?:\.\d+)*))?/', $segment, $matches)) {
-            $lowerBound = ($matches[2] ?? '') !== '' ? $matches[2] : $matches[1];
+        if (preg_match('/^PHP\b\s*(\d+(?:\.\d+)*)?\s*(?:>=\s*(\d+(?:\.\d+)*))?/', $segment, $matches)) {
+            $lowerBound = ($matches[2] ?? '') !== '' ? $matches[2] : ($matches[1] ?? '');
+            if ($lowerBound === '') {
+                continue;
+            }
             $parts = array_pad(explode('.', $lowerBound), 3, '0');
             return implode('.', array_slice($parts, 0, 3));
         }
