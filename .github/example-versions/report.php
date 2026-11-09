@@ -10,7 +10,9 @@ if ($argc !== 3) {
 
 [, $resultsDir, $outDir] = $argv;
 $results = load_results($resultsDir);
-$markdown = render_report($results);
+$tagsFile = $resultsDir . '/batches/tags.json';
+$expectedTags = is_file($tagsFile) ? (json_decode(file_get_contents($tagsFile), true) ?: []) : [];
+$markdown = render_report($results, missing_tags($expectedTags, $results));
 
 if (!is_dir($outDir) && !mkdir($outDir, 0777, true)) {
     fwrite(STDERR, "Cannot create $outDir\n");

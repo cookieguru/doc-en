@@ -106,7 +106,7 @@ return [
     'pthreads' => 'pthreads',
     'quickhash' => 'quickhash',
     'radius' => 'radius',
-    'random' => 'random',
+    'random' => 'standard',
     'rar' => 'rar',
     'readline' => 'readline',
     'recode' => 'recode',

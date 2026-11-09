@@ -39,12 +39,17 @@ function remove_tree($path)
     }
 }
 
+define('MAX_STREAM_BYTES', 1048576);
+define('TRUNCATION_MARKER', "\n[output truncated]");
+
 function drain_pipes($streams)
 {
     $buffers = array();
+    $truncated = array();
     foreach ($streams as $key => $stream) {
         stream_set_blocking($stream, 0);
         $buffers[$key] = '';
+        $truncated[$key] = false;
     }
     while (count($streams) > 0) {
         $read = $streams;
@@ -57,6 +62,11 @@ function drain_pipes($streams)
             $key = array_search($stream, $streams);
             $chunk = fread($stream, 8192);
             if ($chunk !== false && $chunk !== '') {
+                $room = MAX_STREAM_BYTES - strlen($buffers[$key]);
+                if (strlen($chunk) > $room) {
+                    $truncated[$key] = true;
+                    $chunk = substr($chunk, 0, $room);
+                }
                 $buffers[$key] .= $chunk;
             }
             if (feof($stream)) {
@@ -68,7 +78,19 @@ function drain_pipes($streams)
     foreach ($streams as $stream) {
         fclose($stream);
     }
+    foreach ($truncated as $key => $wasTruncated) {
+        if ($wasTruncated) {
+            $buffers[$key] .= TRUNCATION_MARKER;
+        }
+    }
     return $buffers;
+}
+
+function extension_is_loaded($extension)
+{
+    $aliases = array('opcache' => 'Zend OPcache');
+    return extension_loaded($extension)
+        || (isset($aliases[$extension]) && extension_loaded($aliases[$extension]));
 }
 
 function execute_example($code, $nonInteractive, $directory)
@@ -77,8 +99,8 @@ function execute_example($code, $nonInteractive, $directory)
     file_put_contents($directory . '/example.php', $code);
 
     $flags = $nonInteractive
-        ? '-l'
-        : '-d error_reporting=-1 -d display_errors=stderr -d html_errors=0 -d log_errors=0';
+        ? '-d date.timezone=UTC -l'
+        : '-d date.timezone=UTC -d error_reporting=-1 -d display_errors=stderr -d html_errors=0 -d log_errors=0';
     $descriptors = array(
         0 => array('file', '/dev/null', 'r'),
         1 => array('pipe', 'w'),
@@ -113,7 +135,7 @@ function run_batch($batch)
     $results = array();
     $workRoot = sys_get_temp_dir() . '/ev-' . getmypid();
     foreach ($batch['examples'] as $n => $example) {
-        if (!extension_loaded($example['extension'])) {
+        if (!extension_is_loaded($example['extension'])) {
             $results[] = build_result($example, 'skipped-extension', null, '', '');
             continue;
         }

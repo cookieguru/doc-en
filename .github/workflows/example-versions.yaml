@@ -120,12 +120,17 @@ jobs:
       - name: "Pull php:${{ matrix.tag }}-cli"
         id: "pull"
         run: |
-          if docker pull php:${{ matrix.tag }}-cli; then echo ok=1 >> "$GITHUB_OUTPUT"; fi
+          if docker pull php:${{ matrix.tag }}-cli \
+            || skopeo copy --format v2s2 \
+              docker://docker.io/library/php:${{ matrix.tag }}-cli \
+              docker-daemon:php:${{ matrix.tag }}-cli:latest; then
+            echo ok=1 >> "$GITHUB_OUTPUT"
+          fi
 
       - name: "Build image with extensions"
         if: "steps.pull.outputs.ok == '1'"
         run: |
-          curl -fsSL -o install-php-extensions \
+          curl -fsSL --retry 3 -o install-php-extensions \
             https://github.com/mlocati/docker-php-extension-installer/releases/download/2.13.2/install-php-extensions
           chmod +x install-php-extensions
           docker run -d --name ev \
@@ -152,8 +157,14 @@ jobs:
             /batches/batch-${{ matrix.tag }}.json \
             /results/results-${{ matrix.tag }}.json
 
+      - name: "Check results exist"
+        id: "results"
+        if: "${{ !cancelled() }}"
+        run: |
+          if [ ! -f results/results-${{ matrix.tag }}.json ]; then echo missing=1 >> "$GITHUB_OUTPUT"; fi
+
       - name: "Setup PHP"
-        if: "steps.pull.outputs.ok != '1'"
+        if: "${{ !cancelled() && steps.results.outputs.missing == '1' }}"
         uses: "shivammathur/setup-php@2.40.0"
         with:
           php-version: "8.5"
@@ -161,13 +172,14 @@ jobs:
           fail-fast: true
 
       - name: "Mark image unavailable"
-        if: "steps.pull.outputs.ok != '1'"
+        if: "${{ !cancelled() && steps.results.outputs.missing == '1' }}"
         run: |
           php en/.github/example-versions/runner.php unavailable \
             batches/batch-${{ matrix.tag }}.json \
             results/results-${{ matrix.tag }}.json
 
       - name: "Upload results"
+        if: "${{ !cancelled() }}"
         uses: "actions/upload-artifact@v7.0.2"
         with:
           name: "results-${{ matrix.tag }}"
