@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<book xmlns="http://docbook.org/ns/docbook" xml:id="manual">
+<book xml:id="manual" xmlns="http://docbook.org/ns/docbook">
  <refentry xml:id="dom-parentnode.append">
   <refnamediv>
    <refname>Dom\ParentNode::append</refname>
@@ -27,7 +27,7 @@ echo $list->outerHTML, "\n";
 ?>
 ]]>
     </programlisting>
-    <para>The above example will output:</para>
+    <simpara>The above example will output:</simpara>
     <screen>
 <![CDATA[
 <ul id="list"><li>One</li>Two<li>Three</li></ul>
@@ -57,7 +57,7 @@ var_dump($bytes);
 ?>
 ]]>
     </programlisting>
-    <para>The above example will output:</para>
+    <simpara>The above example will output:</simpara>
     <screen>
 <![CDATA[
 Saved 60 bytes
