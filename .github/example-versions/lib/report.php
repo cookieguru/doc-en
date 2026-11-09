@@ -121,6 +121,22 @@ function render_summary(array $results): string
     return $md;
 }
 
+function render_result_table(array $rows): string
+{
+    usort($rows, fn($a, $b) => [$a['page'], $a['example']] <=> [$b['page'], $b['example']]
+        ?: compare_tags($a['tag'], $b['tag']));
+    $md = "| Page | Example | Tag | Detail |
+|---|---|---|---|
+";
+    foreach ($rows as $row) {
+        $tag = $row['tag'] . (!empty($row['substituted']) ? ' (substituted)' : '');
+        $md .= '| ' . report_cell($row['page']) . ' | ' . report_cell((string) $row['example'])
+            . ' | ' . report_cell($tag) . ' | ' . result_detail($row) . " |
+";
+    }
+    return $md;
+}
+
 function render_status_section(string $status, array $results): string
 {
     $byExtension = [];
@@ -129,16 +145,14 @@ function render_status_section(string $status, array $results): string
     }
     ksort($byExtension);
 
-    $md = "\n## $status\n";
+    $md = "
+## $status
+";
     foreach ($byExtension as $extension => $rows) {
-        usort($rows, fn($a, $b) => [$a['page'], $a['example']] <=> [$b['page'], $b['example']]
-            ?: compare_tags($a['tag'], $b['tag']));
-        $md .= "\n### " . report_cell((string) $extension) . "\n\n| Page | Example | Tag | Detail |\n|---|---|---|---|\n";
-        foreach ($rows as $row) {
-            $tag = $row['tag'] . (!empty($row['substituted']) ? ' (substituted)' : '');
-            $md .= '| ' . report_cell($row['page']) . ' | ' . report_cell((string) $row['example'])
-                . ' | ' . report_cell($tag) . ' | ' . result_detail($row) . " |\n";
-        }
+        $md .= "
+### " . report_cell((string) $extension) . "
+
+" . render_result_table($rows);
     }
     return $md;
 }
@@ -166,4 +180,63 @@ function truncate_summary(string $markdown, int $limitBytes): string
     $head = substr($markdown, 0, $limitBytes);
     $lastBreak = strrpos($head, "\n");
     return substr($head, 0, $lastBreak === false ? 0 : $lastBreak) . "\n\n_Truncated; see the report artifact._";
+}
+
+const ISSUE_LABEL = 'example-versions';
+const ISSUE_OUTPUT_ONLY_LABEL = 'output-only';
+const ISSUE_PASSING_STATUSES = ['pass', 'skipped-extension'];
+
+function issue_marker(string $page): string
+{
+    return "<!-- example-versions:$page -->";
+}
+
+function issue_marker_page(string $body): ?string
+{
+    return preg_match('/<!-- example-versions:(.*?) -->/', $body, $m) ? $m[1] : null;
+}
+
+function plan_issues(array $results, array $openIssues): array
+{
+    $failuresByPage = [];
+    foreach ($results as $result) {
+        $failuresByPage[$result['page']] ??= [];
+        if (!in_array($result['status'], ISSUE_PASSING_STATUSES, true)) {
+            $failuresByPage[$result['page']][] = $result;
+        }
+    }
+
+    $issueByPage = [];
+    foreach ($openIssues as $issue) {
+        $page = issue_marker_page($issue['body']);
+        if ($page !== null) {
+            $issueByPage[$page] = $issue['number'];
+        }
+    }
+
+    $plan = [];
+    foreach ($failuresByPage as $page => $failures) {
+        $page = (string) $page;
+        $number = $issueByPage[$page] ?? null;
+        if (!$failures) {
+            if ($number !== null) {
+                $plan[] = ['action' => 'close', 'number' => $number, 'page' => $page];
+            }
+            continue;
+        }
+
+        $outputOnly = !array_filter($failures, fn($failure) => $failure['status'] !== 'output-mismatch');
+        $issue = [
+            'page' => $page,
+            'title' => "Example fails on minimum PHP version: $page",
+            'body' => issue_marker($page) . "
+
+" . render_result_table($failures),
+            'labels' => $outputOnly ? [ISSUE_LABEL, ISSUE_OUTPUT_ONLY_LABEL] : [ISSUE_LABEL],
+        ];
+        $plan[] = $number === null
+            ? ['action' => 'create'] + $issue
+            : ['action' => 'update', 'number' => $number] + $issue;
+    }
+    return $plan;
 }
