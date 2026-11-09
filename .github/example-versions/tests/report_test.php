@@ -26,3 +26,17 @@ function test_truncate_summary(): void
     assert_same(true, str_ends_with($cut, "_Truncated; see the report artifact._"));
     assert_same($md, truncate_summary($md, 10000));
 }
+
+function test_missing_tags_lists_expected_tags_without_results(): void
+{
+    $results = [['tag' => '8.4.14'], ['tag' => '8.4.14'], ['tag' => '5.3.29']];
+    assert_same(['7.4.33', 'unresolved'], missing_tags(['8.4.14', '7.4.33', '5.3.29', 'unresolved'], $results));
+    assert_same([], missing_tags(['8.4.14'], $results));
+}
+
+function test_render_report_lists_missing_results(): void
+{
+    $markdown = render_report([], ['7.4.33']);
+    assert_same(true, str_contains($markdown, "## Missing results\n\n* 7.4.33\n"));
+    assert_same(false, str_contains(render_report([]), 'Missing results'));
+}

@@ -100,3 +100,28 @@ function test_runner_drains_large_stderr_without_timeout(): void
     assert_same('warning', $results[0]['status']);
     assert_same(200000, strlen(base64_decode($results[0]['stderr'])));
 }
+
+function test_extension_is_loaded_resolves_opcache_alias(): void
+{
+    assert_same(true, extension_is_loaded('standard'));
+    assert_same(false, extension_is_loaded('no_such_ext'));
+    assert_same(extension_loaded('opcache') || extension_loaded('Zend OPcache'), extension_is_loaded('opcache'));
+}
+
+function test_runner_truncates_huge_stdout(): void
+{
+    if (!runner_environment_supported(__FUNCTION__)) {
+        return;
+    }
+    $dir = sys_get_temp_dir() . '/ev-runner-' . uniqid();
+    mkdir($dir);
+    $batch = ['tag' => 'host', 'extensions' => ['standard'], 'examples' => [
+        ['page' => 'p', 'example' => 'huge', 'code' => "<?php echo str_repeat('x', 3 * 1024 * 1024);", 'annotations' => '', 'expected' => null, 'extension' => 'standard'],
+    ]];
+    file_put_contents("$dir/batch.json", json_encode($batch));
+    exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(dirname(__DIR__) . '/runner.php') . " run $dir/batch.json $dir/results.json", $out, $code);
+    assert_same(0, $code);
+    $stdout = base64_decode(json_decode(file_get_contents("$dir/results.json"), true)['results'][0]['stdout']);
+    assert_same(MAX_STREAM_BYTES + strlen(TRUNCATION_MARKER), strlen($stdout));
+    assert_same(true, str_ends_with($stdout, TRUNCATION_MARKER));
+}

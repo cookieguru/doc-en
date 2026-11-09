@@ -8,14 +8,16 @@ function iterate_examples(string $manualPath): Generator
     $reader = new XMLReader();
     $reader->open($manualPath);
 
-    while ($reader->read()) {
+    $positioned = $reader->read();
+    while ($positioned) {
         if ($reader->nodeType !== XMLReader::ELEMENT || $reader->localName !== 'refentry') {
+            $positioned = $reader->read();
             continue;
         }
         $document = new DOMDocument();
         $document->appendChild($document->importNode($reader->expand(), true));
         yield from examples_of_refentry($document);
-        $reader->next();
+        $positioned = $reader->next();
     }
 
     $reader->close();

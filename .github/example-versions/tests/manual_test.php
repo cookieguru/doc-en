@@ -48,3 +48,16 @@ function test_group_into_batches_collects_extensions_and_unresolved(): void
     assert_same(2, count($grouped['batches']['8.4.14']['examples']));
     assert_same('c', $grouped['unresolved'][0]['page']);
 }
+
+function test_iterate_examples_visits_adjacent_refentries(): void
+{
+    $entry = fn ($id) => "<refentry xml:id=\"$id\"><refnamediv><refname>$id</refname></refnamediv>"
+        . '<example><programlisting role="php">echo 1;</programlisting></example></refentry>';
+    $xml = '<book xmlns="http://docbook.org/ns/docbook" xmlns:xml="http://www.w3.org/XML/1998/namespace">'
+        . $entry('a') . $entry('b') . $entry('c') . $entry('d') . '</book>';
+    $path = tempnam(sys_get_temp_dir(), 'manual');
+    file_put_contents($path, $xml);
+    $pages = array_column(iterator_to_array(iterate_examples($path), false), 'page');
+    unlink($path);
+    assert_same(['a', 'b', 'c', 'd'], $pages);
+}
