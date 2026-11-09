@@ -39,6 +39,38 @@ function remove_tree($path)
     }
 }
 
+function drain_pipes($streams)
+{
+    $buffers = array();
+    foreach ($streams as $key => $stream) {
+        stream_set_blocking($stream, 0);
+        $buffers[$key] = '';
+    }
+    while (count($streams) > 0) {
+        $read = $streams;
+        $write = null;
+        $except = null;
+        if (stream_select($read, $write, $except, 1) === false) {
+            break;
+        }
+        foreach ($read as $stream) {
+            $key = array_search($stream, $streams);
+            $chunk = fread($stream, 8192);
+            if ($chunk !== false && $chunk !== '') {
+                $buffers[$key] .= $chunk;
+            }
+            if (feof($stream)) {
+                fclose($stream);
+                unset($streams[$key]);
+            }
+        }
+    }
+    foreach ($streams as $stream) {
+        fclose($stream);
+    }
+    return $buffers;
+}
+
 function execute_example($code, $nonInteractive, $directory)
 {
     mkdir($directory);
@@ -57,10 +89,9 @@ function execute_example($code, $nonInteractive, $directory)
         remove_tree($directory);
         return array('exit' => null, 'stdout' => '', 'stderr' => 'proc_open failed');
     }
-    $stdout = stream_get_contents($pipes[1]);
-    $stderr = stream_get_contents($pipes[2]);
-    fclose($pipes[1]);
-    fclose($pipes[2]);
+    $captured = drain_pipes(array(1 => $pipes[1], 2 => $pipes[2]));
+    $stdout = $captured[1];
+    $stderr = $captured[2];
     $exit = proc_close($process);
     remove_tree($directory);
 
