@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<?do-not-translate?>
+
+<versions>
+ <function name="dup_func" from="PHP 5 &gt;= 5.4.0, PHP 7"/>
+</versions>
