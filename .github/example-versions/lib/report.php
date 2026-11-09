@@ -157,7 +157,23 @@ function render_status_section(string $status, array $results): string
     return $md;
 }
 
-function render_report(array $results): string
+function missing_tags(array $expectedTags, array $results): array
+{
+    $present = array_unique(array_column($results, 'tag'));
+    $missing = array_values(array_diff(array_map('strval', $expectedTags), array_map('strval', $present)));
+    usort($missing, 'compare_tags');
+    return $missing;
+}
+
+function render_missing_tags(array $missingTags): string
+{
+    if (!$missingTags) {
+        return '';
+    }
+    return "\n## Missing results\n\n" . implode('', array_map(fn($tag) => '* ' . report_cell($tag) . "\n", $missingTags));
+}
+
+function render_report(array $results, array $missingTags = []): string
 {
     $md = render_summary($results);
     foreach (REPORT_STATUSES as $status) {
@@ -169,7 +185,7 @@ function render_report(array $results): string
             $md .= render_status_section($status, $matching);
         }
     }
-    return $md;
+    return $md . render_missing_tags($missingTags);
 }
 
 function truncate_summary(string $markdown, int $limitBytes): string
@@ -185,7 +201,7 @@ function truncate_summary(string $markdown, int $limitBytes): string
 const ISSUE_BODY_LIMIT_BYTES = 60000;
 const ISSUE_LABEL = 'example-versions';
 const ISSUE_OUTPUT_ONLY_LABEL = 'output-only';
-const ISSUE_PASSING_STATUSES = ['pass', 'skipped-extension'];
+const ISSUE_NON_FAILING_STATUSES = ['pass', 'skipped-extension', 'image-unavailable'];
 
 function issue_marker(string $page): string
 {
@@ -200,9 +216,13 @@ function issue_marker_page(string $body): ?string
 function plan_issues(array $results, array $openIssues): array
 {
     $failuresByPage = [];
+    $passingPages = [];
     foreach ($results as $result) {
         $failuresByPage[$result['page']] ??= [];
-        if (!in_array($result['status'], ISSUE_PASSING_STATUSES, true)) {
+        if ($result['status'] === 'pass') {
+            $passingPages[$result['page']] = true;
+        }
+        if (!in_array($result['status'], ISSUE_NON_FAILING_STATUSES, true)) {
             $failuresByPage[$result['page']][] = $result;
         }
     }
@@ -220,7 +240,7 @@ function plan_issues(array $results, array $openIssues): array
         $page = (string) $page;
         $number = $issueByPage[$page] ?? null;
         if (!$failures) {
-            if ($number !== null) {
+            if ($number !== null && isset($passingPages[$page])) {
                 $plan[] = ['action' => 'close', 'number' => $number, 'page' => $page];
             }
             continue;
