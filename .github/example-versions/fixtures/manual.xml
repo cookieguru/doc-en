@@ -30,7 +30,7 @@ echo $list->outerHTML, "\n";
     <para>The above example will output:</para>
     <screen>
 <![CDATA[
-<ul><li>One</li>Two<li>Three</li></ul>
+<ul id="list"><li>One</li>Two<li>Three</li></ul>
 ]]>
     </screen>
    </example>
@@ -51,7 +51,7 @@ echo $list->outerHTML, "\n";
 <![CDATA[
 <?php
 $dom = Dom\HTMLDocument::createFromString('<!DOCTYPE html><p>Hello, world!</p>');
-$bytes = $dom->saveHtmlFile('/path/to/output.html');
+$bytes = $dom->saveHtmlFile('output.html');
 echo "Saved $bytes bytes\n";
 var_dump($bytes);
 ?>
