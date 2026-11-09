@@ -42,3 +42,33 @@ function test_plan_issues_caps_body_size(): void
     assert_same(true, str_starts_with($body, '<!-- example-versions:big-page -->'));
     assert_same(true, str_ends_with($body, '_Truncated; see the report artifact._'));
 }
+
+function issue_test_result(string $page, string $status): array
+{
+    return ['tag' => '8.4.14', 'page' => $page, 'example' => 'e', 'extension' => 'dom',
+        'status' => $status, 'substituted' => false, 'stdout' => '', 'stderr' => '', 'expected' => null];
+}
+
+function test_plan_issues_unavailable_page_without_issue_creates_nothing(): void
+{
+    assert_same([], plan_issues([issue_test_result('gone', 'image-unavailable')], []));
+}
+
+function test_plan_issues_unavailable_page_keeps_open_issue(): void
+{
+    $open = [['number' => 20, 'body' => "<!-- example-versions:gone -->\nold"]];
+    assert_same([], plan_issues([issue_test_result('gone', 'image-unavailable')], $open));
+}
+
+function test_plan_issues_skipped_page_keeps_open_issue(): void
+{
+    $open = [['number' => 21, 'body' => "<!-- example-versions:skipped -->\nold"]];
+    assert_same([], plan_issues([issue_test_result('skipped', 'skipped-extension')], $open));
+}
+
+function test_plan_issues_closes_only_when_something_passed(): void
+{
+    $open = [['number' => 22, 'body' => "<!-- example-versions:mixed -->\nold"]];
+    $plan = plan_issues([issue_test_result('mixed', 'pass'), issue_test_result('mixed', 'image-unavailable')], $open);
+    assert_same('close', $plan[0]['action']);
+}

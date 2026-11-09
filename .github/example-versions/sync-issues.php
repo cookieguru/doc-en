@@ -3,6 +3,8 @@
 require __DIR__ . '/lib/runner-lib.php';
 require __DIR__ . '/lib/report.php';
 
+const ISSUE_CALL_PAUSE_SECONDS = 2;
+
 function gh(array $args): string
 {
     $process = proc_open(array_merge(['gh'], $args), [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);
@@ -51,7 +53,11 @@ if (!is_array($openIssues)) {
     exit(1);
 }
 
+$callsMade = 0;
 foreach (plan_issues(load_results($resultsDir), $openIssues) as $step) {
+    if ($callsMade++ > 0) {
+        sleep(ISSUE_CALL_PAUSE_SECONDS);
+    }
     switch ($step['action']) {
         case 'create':
             with_body_file($step['body'], function ($bodyFile) use ($repo, $step) {
