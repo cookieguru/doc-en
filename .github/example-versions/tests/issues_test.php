@@ -27,3 +27,18 @@ function test_plan_issues_create_update_close_and_leave_alone(): void
     assert_same(false, isset($byPage['not-in-this-run']));
     assert_same(false, isset($byPage['skip-page']));
 }
+
+function test_plan_issues_caps_body_size(): void
+{
+    $results = [];
+    for ($i = 0; $i < 2000; $i++) {
+        $results[] = ['tag' => '8.4.14', 'page' => 'big-page', 'example' => "example-$i", 'extension' => 'dom',
+            'status' => 'warning', 'substituted' => false, 'stdout' => '',
+            'stderr' => base64_encode(str_repeat('Warning: long message ', 10)), 'expected' => null];
+    }
+    $body = plan_issues($results, [])[0]['body'];
+
+    assert_same(true, strlen($body) < 65536);
+    assert_same(true, str_starts_with($body, '<!-- example-versions:big-page -->'));
+    assert_same(true, str_ends_with($body, '_Truncated; see the report artifact._'));
+}
