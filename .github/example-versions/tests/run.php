@@ -11,6 +11,8 @@ function assert_same(mixed $expected, mixed $actual, string $message = ''): void
     }
 }
 
+define('FIXTURES', dirname(__DIR__) . '/fixtures');
+
 foreach (glob(__DIR__ . '/../lib/*.php') as $file) {
     require_once $file;
 }
