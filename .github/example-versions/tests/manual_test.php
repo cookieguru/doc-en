@@ -61,3 +61,38 @@ function test_iterate_examples_visits_adjacent_refentries(): void
     unlink($path);
     assert_same(['a', 'b', 'c', 'd'], $pages);
 }
+
+function test_iterate_examples_flags_similar_output(): void
+{
+    $path = sys_get_temp_dir() . '/ev-similar-' . uniqid() . '.xml';
+    file_put_contents($path, <<<'XML'
+<?xml version="1.0" encoding="utf-8"?>
+<book xml:id="manual" xmlns="http://docbook.org/ns/docbook">
+ <refentry xml:id="function.time">
+  <refnamediv><refname>time</refname></refnamediv>
+  <example>
+   <programlisting role="php"><![CDATA[<?php echo time();]]></programlisting>
+   <para>The above example will output something similar to:</para>
+   <screen><![CDATA[1234]]></screen>
+  </example>
+  <example>
+   <programlisting role="php"><![CDATA[<?php echo 1;]]></programlisting>
+   <simpara>The above example will output:</simpara>
+   <screen><![CDATA[1]]></screen>
+  </example>
+ </refentry>
+</book>
+XML);
+    $examples = iterator_to_array(iterate_examples($path), false);
+    unlink($path);
+    assert_same([true, false], array_column($examples, 'similar'));
+}
+
+function test_build_records_expands_implied_extensions_into_batches(): void
+{
+    $records = build_records(iterate_examples(FIXTURES . '/manual.xml'), load_versions(FIXTURES . '/reference'), ['dom' => ['dom', 'libxml']], ['dom']);
+    assert_same('dom', $records[0]['extension']);
+    assert_same(['dom', 'libxml'], $records[0]['requires']);
+    $grouped = group_into_batches($records, ['8.4.14']);
+    assert_same(['dom', 'libxml'], $grouped['batches']['8.4.14']['extensions']);
+}

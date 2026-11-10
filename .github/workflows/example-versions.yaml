@@ -5,10 +5,6 @@ name: "Example Versions"
 on:
   workflow_dispatch:
     inputs:
-      open_issues:
-        description: "Open or update GitHub issues for failing pages"
-        type: "boolean"
-        default: false
       only:
         description: "Comma-separated extension or page filter (empty for everything)"
         type: "string"
@@ -150,7 +146,7 @@ jobs:
         if: "steps.pull.outputs.ok == '1' && (startsWith(matrix.tag, '5.3.') || startsWith(matrix.tag, '5.4.'))"
         run: |
           results=results/results-${{ matrix.tag }}.json
-          extensions=$(jq -r '[.results[] | select(.status == "skipped-extension") | .extension] | unique | .[]' "$results")
+          extensions=$(jq -r '[.results[] | select(.status == "skipped-extension") | (.requires // [.extension])[]] | unique | .[]' "$results")
           if [ -z "$extensions" ]; then
             exit 0
           fi
@@ -201,10 +197,6 @@ jobs:
       - "run"
     runs-on: "ubuntu-latest"
 
-    permissions:
-      contents: "read"
-      issues: "write"
-
     steps:
       - name: "Checkout cookieguru/doc-en"
         uses: "actions/checkout@v7.0.1"
@@ -239,9 +231,3 @@ jobs:
         with:
           name: "report"
           path: "report/"
-
-      - name: "Sync issues"
-        if: "${{ inputs.open_issues }}"
-        env:
-          GH_TOKEN: "${{ github.token }}"
-        run: php en/.github/example-versions/sync-issues.php all ${{ github.repository }}

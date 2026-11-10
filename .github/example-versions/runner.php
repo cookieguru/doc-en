@@ -35,9 +35,10 @@ if (!isset($batch['tag']) || !isset($batch['examples'])) {
     fail('Invalid batch file ' . $argv[2]);
 }
 
-$supportDir = dirname(__FILE__) . '/support/files';
+$rootOverride = getenv('EXAMPLE_VERSIONS_ROOT');
+$support = load_support(dirname(__FILE__) . '/support', $rootOverride === false ? '' : $rootOverride);
 if ($mode === 'run') {
-    $results = run_batch($batch, $supportDir);
+    $results = run_batch($batch, $support);
 } elseif ($mode === 'unavailable') {
     $results = mark_unavailable($batch);
 } else {
@@ -45,7 +46,7 @@ if ($mode === 'run') {
     if (!isset($previous['results']) || count($previous['results']) !== count($batch['examples'])) {
         fail('Results file ' . $argv[3] . ' does not match batch ' . $argv[2]);
     }
-    $results = rerun_skipped($batch, $previous, $argv[4], $supportDir);
+    $results = rerun_skipped($batch, $previous, $argv[4], $support);
 }
 
 $encoded = json_encode($results);

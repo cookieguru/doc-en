@@ -98,7 +98,7 @@ return [
     'pdo_pgsql' => 'pdo_pgsql',
     'pdo_sqlite' => 'pdo_sqlite',
     'pgsql' => 'pgsql',
-    'phar' => 'phar',
+    'phar' => ['phar', 'zlib', 'bz2'],
     'phpdbg' => 'phpdbg',
     'posix' => 'posix',
     'ps' => 'ps',

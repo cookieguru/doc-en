@@ -161,43 +161,121 @@ function build_result($example, $status, $exit, $stdout, $stderr)
     return $example;
 }
 
-function run_example($example, $directory, $supportDir)
+function requirements_loaded($example)
 {
-    if (!extension_is_loaded($example['extension'])) {
+    $requires = isset($example['requires']) ? $example['requires'] : array($example['extension']);
+    foreach ($requires as $extension) {
+        if (!extension_is_loaded($extension)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+function read_support_paths($pathsFile)
+{
+    $entries = array();
+    foreach (file($pathsFile, FILE_IGNORE_NEW_LINES) as $line) {
+        $line = trim($line);
+        if ($line === '' || $line[0] === '#') {
+            continue;
+        }
+        $fields = preg_split('/\s+/', $line);
+        $entries[] = array('target' => $fields[0], 'source' => isset($fields[1]) ? $fields[1] : null);
+    }
+    return $entries;
+}
+
+function load_support($supportDir, $root)
+{
+    return array(
+        'files' => $supportDir . '/files',
+        'paths' => read_support_paths($supportDir . '/paths.txt'),
+        'root' => $root,
+    );
+}
+
+function reset_support_paths($support)
+{
+    foreach ($support['paths'] as $entry) {
+        $target = rtrim($support['root'] . $entry['target'], '/');
+        if (file_exists($target) || is_link($target)) {
+            remove_tree($target);
+        }
+        if ($entry['source'] === null) {
+            mkdir($target, 0777, true);
+            chmod($target, 0777);
+            continue;
+        }
+        if (!is_dir(dirname($target))) {
+            mkdir(dirname($target), 0777, true);
+        }
+        copy_tree($support['files'] . '/' . $entry['source'], $target);
+    }
+}
+
+define('SERVICE_ERROR_PATTERN', '/'
+    . "Can't connect to (local )?MySQL server|SQLSTATE\\[HY000\\] \\[2002\\]|\\(HY000\\/2002\\)"
+    . '|Unable to connect to PostgreSQL server|could not connect to server|connection to server on socket'
+    . "|ORA-12\\d{3}|Can't contact LDAP server|No response from|Connection refused"
+    . '|php_network_getaddresses|getaddrinfo|Temporary failure in name resolution|Could not resolve host'
+    . '|Network is unreachable/i');
+
+function needs_service($status, $stdout, $stderr, $requires)
+{
+    if (!in_array($status, array('error', 'warning', 'timeout'))) {
+        return false;
+    }
+    if (preg_match(SERVICE_ERROR_PATTERN, $stderr . "\n" . $stdout)) {
+        return true;
+    }
+    $serviceExtensions = array('oci8', 'pdo_oci', 'snmp', 'ldap', 'ftp', 'imap');
+    return $status === 'timeout' && count(array_intersect($requires, $serviceExtensions)) > 0;
+}
+
+function run_example($example, $directory, $support)
+{
+    if (!requirements_loaded($example)) {
         return build_result($example, 'skipped-extension', null, '', '');
     }
+    reset_support_paths($support);
     $annotations = isset($example['annotations']) ? $example['annotations'] : '';
     $outcome = execute_example(
         $example['code'],
         strpos($annotations, 'non-interactive') !== false,
         $directory,
-        $supportDir
+        $support['files']
     );
+    $expected = empty($example['similar']) ? $example['expected'] : null;
     $status = $outcome['exit'] === null
         ? 'error'
-        : classify($outcome['exit'], $outcome['stdout'], $outcome['stderr'], $example['expected'], $annotations);
+        : classify($outcome['exit'], $outcome['stdout'], $outcome['stderr'], $expected, $annotations);
+    $requires = isset($example['requires']) ? $example['requires'] : array($example['extension']);
+    if (needs_service($status, $outcome['stdout'], $outcome['stderr'], $requires)) {
+        $status = 'needs-service';
+    }
     return build_result($example, $status, $outcome['exit'], $outcome['stdout'], $outcome['stderr']);
 }
 
-function run_batch($batch, $supportDir)
+function run_batch($batch, $support)
 {
     $results = array();
     $workRoot = sys_get_temp_dir() . '/ev-' . getmypid();
     foreach ($batch['examples'] as $n => $example) {
-        $results[] = run_example($example, $workRoot . '-' . $n, $supportDir);
+        $results[] = run_example($example, $workRoot . '-' . $n, $support);
     }
     return array('tag' => $batch['tag'], 'results' => $results);
 }
 
-function rerun_skipped($batch, $previous, $fallbackTag, $supportDir)
+function rerun_skipped($batch, $previous, $fallbackTag, $support)
 {
     $workRoot = sys_get_temp_dir() . '/ev-' . getmypid();
     foreach ($previous['results'] as $n => $result) {
         $example = $batch['examples'][$n];
-        if ($result['status'] !== 'skipped-extension' || !extension_is_loaded($example['extension'])) {
+        if ($result['status'] !== 'skipped-extension' || !requirements_loaded($example)) {
             continue;
         }
-        $rerun = run_example($example, $workRoot . '-' . $n, $supportDir);
+        $rerun = run_example($example, $workRoot . '-' . $n, $support);
         $rerun['fallback_tag'] = $fallbackTag;
         $previous['results'][$n] = $rerun;
     }
