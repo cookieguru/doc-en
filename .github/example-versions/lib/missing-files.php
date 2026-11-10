@@ -27,7 +27,7 @@ function missing_file_report(array $results): array
 {
     $paths = [];
     foreach ($results as $result) {
-        if (in_array($result['status'], ['pass', 'skipped-extension', 'image-unavailable'], true)) {
+        if (in_array($result['status'], ['pass', 'skipped-extension', 'image-unavailable', 'needs-service'], true)) {
             continue;
         }
         $output = base64_decode($result['stderr'] ?? '') . "\n" . base64_decode($result['stdout'] ?? '');
