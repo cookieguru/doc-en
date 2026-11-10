@@ -129,7 +129,8 @@ function render_result_table(array $rows): string
 |---|---|---|---|
 ";
     foreach ($rows as $row) {
-        $tag = $row['tag'] . (!empty($row['substituted']) ? ' (substituted)' : '');
+        $tag = $row['tag'] . (!empty($row['substituted']) ? ' (substituted)' : '')
+            . (isset($row['fallback_tag']) ? ' (ran on ' . $row['fallback_tag'] . ')' : '');
         $md .= '| ' . report_cell($row['page']) . ' | ' . report_cell((string) $row['example'])
             . ' | ' . report_cell($tag) . ' | ' . result_detail($row) . " |
 ";

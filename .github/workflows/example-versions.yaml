@@ -94,6 +94,9 @@ jobs:
     runs-on: "ubuntu-latest"
     timeout-minutes: 120
 
+    env:
+      FALLBACK_TAG: "5.5.38"
+
     strategy:
       fail-fast: false
       max-parallel: 20
@@ -130,21 +133,8 @@ jobs:
       - name: "Build image with extensions"
         if: "steps.pull.outputs.ok == '1'"
         run: |
-          curl -fsSL --retry 3 -o install-php-extensions \
-            https://github.com/mlocati/docker-php-extension-installer/releases/download/2.13.2/install-php-extensions
-          chmod +x install-php-extensions
-          docker run -d --name ev \
-            -v "$PWD/install-php-extensions:/usr/local/bin/install-php-extensions:ro" \
-            php:${{ matrix.tag }}-cli sleep infinity
-          for extension in $(jq -r '.extensions[]' batches/batch-${{ matrix.tag }}.json); do
-            if docker exec ev php -r 'exit(extension_loaded($argv[1]) ? 0 : 1);' "$extension"; then
-              continue
-            fi
-            docker exec ev install-php-extensions "$extension" \
-              || echo "::warning::could not install $extension on ${{ matrix.tag }}"
-          done
-          docker commit ev ev-image
-          docker rm -f ev
+          en/.github/example-versions/build-image.sh php:${{ matrix.tag }}-cli ev-image \
+            $(jq -r '.extensions[]' batches/batch-${{ matrix.tag }}.json)
 
       - name: "Run examples"
         if: "steps.pull.outputs.ok == '1'"
@@ -156,6 +146,27 @@ jobs:
             ev-image php /ev/runner.php run \
             /batches/batch-${{ matrix.tag }}.json \
             /results/results-${{ matrix.tag }}.json
+
+      # The extension installer needs PHP 5.5+, so examples skipped for a
+      # missing extension on 5.3/5.4 rerun on the last 5.5 release instead.
+      - name: "Rerun skipped examples on PHP ${{ env.FALLBACK_TAG }}"
+        if: "steps.pull.outputs.ok == '1' && (startsWith(matrix.tag, '5.3.') || startsWith(matrix.tag, '5.4.'))"
+        run: |
+          results=results/results-${{ matrix.tag }}.json
+          extensions=$(jq -r '[.results[] | select(.status == "skipped-extension") | .extension] | unique | .[]' "$results")
+          if [ -z "$extensions" ]; then
+            exit 0
+          fi
+          docker pull php:${FALLBACK_TAG}-cli
+          en/.github/example-versions/build-image.sh php:${FALLBACK_TAG}-cli ev-fallback $extensions
+          docker run --rm --network none \
+            -v "$PWD/en/.github/example-versions:/ev:ro" \
+            -v "$PWD/batches:/batches:ro" \
+            -v "$PWD/results:/results" \
+            ev-fallback php /ev/runner.php rerun-skipped \
+            /batches/batch-${{ matrix.tag }}.json \
+            /results/results-${{ matrix.tag }}.json \
+            "$FALLBACK_TAG"
 
       - name: "Check results exist"
         id: "results"

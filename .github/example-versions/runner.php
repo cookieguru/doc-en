@@ -8,21 +8,46 @@ function fail($message)
     exit(1);
 }
 
-if ($argc !== 4 || !in_array($argv[1], array('run', 'unavailable'))) {
-    fwrite(STDERR, "Usage: php runner.php run|unavailable <batch.json> <results.json>\n");
+function read_json_file($path, $description)
+{
+    $contents = @file_get_contents($path);
+    if ($contents === false) {
+        fail("Cannot read $description file $path");
+    }
+    $data = json_decode($contents, true);
+    if (!is_array($data)) {
+        fail("Invalid $description file $path");
+    }
+    return $data;
+}
+
+$usage = "Usage: php runner.php run|unavailable <batch.json> <results.json>\n"
+    . "       php runner.php rerun-skipped <batch.json> <results.json> <fallback-tag>\n";
+$mode = isset($argv[1]) ? $argv[1] : '';
+$expectedArgs = $mode === 'rerun-skipped' ? 5 : 4;
+if ($argc !== $expectedArgs || !in_array($mode, array('run', 'unavailable', 'rerun-skipped'))) {
+    fwrite(STDERR, $usage);
     exit(2);
 }
 
-$contents = @file_get_contents($argv[2]);
-if ($contents === false) {
-    fail('Cannot read batch file ' . $argv[2]);
-}
-$batch = json_decode($contents, true);
-if (!is_array($batch) || !isset($batch['tag']) || !isset($batch['examples'])) {
+$batch = read_json_file($argv[2], 'batch');
+if (!isset($batch['tag']) || !isset($batch['examples'])) {
     fail('Invalid batch file ' . $argv[2]);
 }
 
-$results = $argv[1] === 'run' ? run_batch($batch) : mark_unavailable($batch);
+$supportDir = dirname(__FILE__) . '/support/files';
+if ($mode === 'run') {
+    $results = run_batch($batch, $supportDir);
+} elseif ($mode === 'unavailable') {
+    $results = mark_unavailable($batch);
+} else {
+    $previous = read_json_file($argv[3], 'results');
+    if (!isset($previous['results']) || count($previous['results']) !== count($batch['examples'])) {
+        fail('Results file ' . $argv[3] . ' does not match batch ' . $argv[2]);
+    }
+    $results = rerun_skipped($batch, $previous, $argv[4], $supportDir);
+}
+
 $encoded = json_encode($results);
 if ($encoded === false) {
     fail('Cannot encode results');

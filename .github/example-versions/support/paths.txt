@@ -1,0 +1,9 @@
+# Absolute paths that manual examples expect to exist, created in the image.
+# <target>            an empty, writable directory
+# <target> <source>   a copy of support/files/<source>
+/path/to/
+/path/to/project project
+/path/to/bigfile.jpg bigfile.jpg
+/full/path/
+/usr/local/something.txt something.txt
+/examples examples
