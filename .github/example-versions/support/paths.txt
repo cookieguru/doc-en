@@ -1,4 +1,4 @@
-# Absolute paths that manual examples expect to exist, created in the image.
+# Absolute paths that manual examples expect, reset before every example.
 # <target>            an empty, writable directory
 # <target> <source>   a copy of support/files/<source>
 /path/to/
@@ -7,3 +7,5 @@
 /full/path/
 /usr/local/something.txt something.txt
 /examples examples
+/path/to/phar.phar phars/phar.phar
+/path/to/test.png test.png

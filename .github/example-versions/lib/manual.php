@@ -41,6 +41,7 @@ function examples_of_refentry(DOMDocument $document): Generator
         $exampleId = $id !== '' ? $id : $page . '#' . $position;
         $listings = $xpath->query('.//d:programlisting[@role="php"]', $example);
         $screens = $xpath->query('.//d:screen', $example);
+        $similar = $xpath->query('.//*[self::d:para or self::d:simpara]/text()[contains(., "similar to")]', $example)->length > 0;
 
         foreach ($listings as $listing) {
             $single = $listings->length === 1;
@@ -51,6 +52,7 @@ function examples_of_refentry(DOMDocument $document): Generator
                 'code' => trim($listing->textContent),
                 'annotations' => $single ? $listing->getAttribute('annotations') : 'non-interactive',
                 'expected' => $single && $screens->length === 1 ? trim($screens->item(0)->textContent) : null,
+                'similar' => $similar,
             ];
         }
     }
@@ -66,6 +68,7 @@ function build_records(iterable $examples, array $versions, array $extensionMap,
             continue;
         }
         $directory = $match['entry']['directory'];
+        $requires = (array) ($extensionMap[$directory] ?? $directory);
         if ($only !== null && !array_intersect($only, [$directory, $example['page']])) {
             continue;
         }
@@ -77,7 +80,9 @@ function build_records(iterable $examples, array $versions, array $extensionMap,
             'code' => $example['code'],
             'annotations' => $example['annotations'],
             'expected' => $example['expected'],
-            'extension' => $extensionMap[$directory] ?? $directory,
+            'similar' => $example['similar'] ?? false,
+            'extension' => $requires[0],
+            'requires' => $requires,
             'directory' => $directory,
             'minimum' => $match['entry']['minimum'],
         ];
@@ -114,7 +119,7 @@ function group_into_batches(array $records, array $available): array
         }
         $tag = $resolved['tag'];
         $batches[$tag] ??= ['tag' => $tag, 'extensions' => [], 'examples' => []];
-        $batches[$tag]['extensions'][] = $record['extension'];
+        array_push($batches[$tag]['extensions'], ...($record['requires'] ?? [$record['extension']]));
         $batches[$tag]['examples'][] = $record + ['tag' => $tag, 'substituted' => $resolved['substituted']];
     }
 

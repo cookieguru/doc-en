@@ -12,6 +12,8 @@ function assert_same(mixed $expected, mixed $actual, string $message = ''): void
 }
 
 define('FIXTURES', dirname(__DIR__) . '/fixtures');
+define('TEST_PATHS_ROOT', sys_get_temp_dir() . '/ev-root-' . uniqid());
+putenv('EXAMPLE_VERSIONS_ROOT=' . TEST_PATHS_ROOT);
 
 foreach (glob(__DIR__ . '/../lib/*.php') as $file) {
     require_once $file;

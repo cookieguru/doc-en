@@ -207,3 +207,52 @@ function test_runner_rerun_skipped_rejects_mismatched_results(): void
     file_put_contents("$dir/results.json", json_encode(['tag' => 't', 'results' => []]));
     assert_same(1, run_runner_cli("rerun-skipped $dir/batch.json $dir/results.json 5.5.38"));
 }
+
+function test_requirements_loaded_checks_every_required_extension(): void
+{
+    assert_same(true, requirements_loaded(['extension' => 'standard']));
+    assert_same(true, requirements_loaded(['extension' => 'standard', 'requires' => ['standard', 'pcre']]));
+    assert_same(false, requirements_loaded(['extension' => 'standard', 'requires' => ['standard', 'no_such_ext']]));
+}
+
+function test_needs_service_recognizes_connection_failures(): void
+{
+    assert_same(true, needs_service('warning', '', "Warning: pg_connect(): Unable to connect to PostgreSQL server: could not connect to server", ['pgsql']));
+    assert_same(true, needs_service('error', '', "Fatal error: Uncaught PDOException: SQLSTATE[HY000] [2002] No such file or directory", ['pdo_mysql']));
+    assert_same(true, needs_service('timeout', '', '', ['oci8']));
+    assert_same(false, needs_service('timeout', '', '', ['standard']));
+    assert_same(false, needs_service('error', '', 'Warning: Undefined variable $dsn', ['pdo_pgsql']));
+    assert_same(false, needs_service('pass', '', 'Connection refused', ['standard']));
+}
+
+function test_reset_support_paths_restores_paths_between_examples(): void
+{
+    $root = sys_get_temp_dir() . '/ev-reset-' . uniqid();
+    $support = load_support(dirname(__DIR__) . '/support', $root);
+    reset_support_paths($support);
+    assert_same(true, is_dir("$root/path/to"));
+    assert_same(true, is_file("$root/usr/local/something.txt"));
+    assert_same(true, is_file("$root/path/to/project/index.php"));
+    file_put_contents("$root/path/to/leftover.txt", 'x');
+    file_put_contents("$root/usr/local/something.txt", 'changed');
+    reset_support_paths($support);
+    assert_same(false, file_exists("$root/path/to/leftover.txt"));
+    assert_same(file_get_contents(support_dir() . '/something.txt'), file_get_contents("$root/usr/local/something.txt"));
+    remove_tree($root);
+}
+
+function test_runner_skips_output_comparison_for_similar_output(): void
+{
+    if (!runner_environment_supported(__FUNCTION__)) {
+        return;
+    }
+    $dir = sys_get_temp_dir() . '/ev-runner-' . uniqid();
+    mkdir($dir);
+    $batch = ['tag' => 'host', 'extensions' => ['standard'], 'examples' => [
+        ['page' => 'p', 'example' => 'similar', 'code' => "<?php echo time();", 'annotations' => '', 'expected' => '1234', 'similar' => true, 'extension' => 'standard'],
+        ['page' => 'p', 'example' => 'exact', 'code' => "<?php echo time();", 'annotations' => '', 'expected' => '1234', 'similar' => false, 'extension' => 'standard'],
+    ]];
+    file_put_contents("$dir/batch.json", json_encode($batch));
+    assert_same(0, run_runner_cli("run $dir/batch.json $dir/results.json"));
+    assert_same(['pass', 'output-mismatch'], array_column(json_decode(file_get_contents("$dir/results.json"), true)['results'], 'status'));
+}

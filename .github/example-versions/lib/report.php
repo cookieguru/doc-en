@@ -6,6 +6,7 @@ const REPORT_STATUSES = [
     'timeout',
     'warning',
     'output-mismatch',
+    'needs-service',
     'pass',
     'skipped-extension',
 ];
@@ -197,68 +198,4 @@ function truncate_summary(string $markdown, int $limitBytes): string
     $head = substr($markdown, 0, $limitBytes);
     $lastBreak = strrpos($head, "\n");
     return substr($head, 0, $lastBreak === false ? 0 : $lastBreak) . "\n\n_Truncated; see the report artifact._";
-}
-
-const ISSUE_BODY_LIMIT_BYTES = 60000;
-const ISSUE_LABEL = 'example-versions';
-const ISSUE_OUTPUT_ONLY_LABEL = 'output-only';
-const ISSUE_NON_FAILING_STATUSES = ['pass', 'skipped-extension', 'image-unavailable'];
-
-function issue_marker(string $page): string
-{
-    return "<!-- example-versions:$page -->";
-}
-
-function issue_marker_page(string $body): ?string
-{
-    return preg_match('/<!-- example-versions:(.*?) -->/', $body, $m) ? $m[1] : null;
-}
-
-function plan_issues(array $results, array $openIssues): array
-{
-    $failuresByPage = [];
-    $passingPages = [];
-    foreach ($results as $result) {
-        $failuresByPage[$result['page']] ??= [];
-        if ($result['status'] === 'pass') {
-            $passingPages[$result['page']] = true;
-        }
-        if (!in_array($result['status'], ISSUE_NON_FAILING_STATUSES, true)) {
-            $failuresByPage[$result['page']][] = $result;
-        }
-    }
-
-    $issueByPage = [];
-    foreach ($openIssues as $issue) {
-        $page = issue_marker_page($issue['body']);
-        if ($page !== null) {
-            $issueByPage[$page] = $issue['number'];
-        }
-    }
-
-    $plan = [];
-    foreach ($failuresByPage as $page => $failures) {
-        $page = (string) $page;
-        $number = $issueByPage[$page] ?? null;
-        if (!$failures) {
-            if ($number !== null && isset($passingPages[$page])) {
-                $plan[] = ['action' => 'close', 'number' => $number, 'page' => $page];
-            }
-            continue;
-        }
-
-        $outputOnly = !array_filter($failures, fn($failure) => $failure['status'] !== 'output-mismatch');
-        $issue = [
-            'page' => $page,
-            'title' => "Example fails on minimum PHP version: $page",
-            'body' => truncate_summary(issue_marker($page) . "
-
-" . render_result_table($failures), ISSUE_BODY_LIMIT_BYTES),
-            'labels' => $outputOnly ? [ISSUE_LABEL, ISSUE_OUTPUT_ONLY_LABEL] : [ISSUE_LABEL],
-        ];
-        $plan[] = $number === null
-            ? ['action' => 'create'] + $issue
-            : ['action' => 'update', 'number' => $number] + $issue;
-    }
-    return $plan;
 }
