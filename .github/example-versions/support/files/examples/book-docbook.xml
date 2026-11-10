@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE book [
+ <!ELEMENT book (title, chapter+)>
+ <!ELEMENT title (#PCDATA)>
+ <!ELEMENT chapter (title)>
+ <!ATTLIST chapter id ID #IMPLIED>
+]>
+<book>
+ <title>My lists</title>
+ <chapter id="books">
+  <title>My books</title>
+ </chapter>
+</book>

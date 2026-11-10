@@ -40,3 +40,12 @@ function test_render_report_lists_missing_results(): void
     assert_same(true, str_contains($markdown, "## Missing results\n\n* 7.4.33\n"));
     assert_same(false, str_contains(render_report([]), 'Missing results'));
 }
+
+function test_render_result_table_shows_fallback_tag(): void
+{
+    $md = render_result_table([
+        ['tag' => '5.3.29', 'page' => 'p', 'example' => 'e', 'status' => 'warning', 'substituted' => false, 'fallback_tag' => '5.5.38',
+         'stdout' => base64_encode(''), 'stderr' => base64_encode('Warning: x'), 'expected' => null],
+    ]);
+    assert_same(true, str_contains($md, '| 5.3.29 (ran on 5.5.38) |'));
+}

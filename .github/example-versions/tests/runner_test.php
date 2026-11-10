@@ -125,3 +125,85 @@ function test_runner_truncates_huge_stdout(): void
     assert_same(MAX_STREAM_BYTES + strlen(TRUNCATION_MARKER), strlen($stdout));
     assert_same(true, str_ends_with($stdout, TRUNCATION_MARKER));
 }
+
+function support_dir(): string
+{
+    return dirname(__DIR__) . '/support/files';
+}
+
+function test_support_entries_for_copies_only_referenced_entries(): void
+{
+    assert_same(['examples'], support_entries_for("<?php \$doc->load('examples/book-simple.xml');", support_dir()));
+    assert_same(['phplogo.png'], support_entries_for("<?php imagecreatefrompng('phplogo.png');", support_dir()));
+    assert_same([], support_entries_for("<?php echo 'hi';", support_dir()));
+    assert_same([], support_entries_for("<?php echo 'hi';", support_dir() . '/missing'));
+}
+
+function test_support_paths_sources_exist(): void
+{
+    $lines = file(dirname(__DIR__) . '/support/paths.txt', FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    foreach ($lines as $line) {
+        $fields = preg_split('/\s+/', trim($line));
+        if ($line[0] === '#' || count($fields) < 2) {
+            continue;
+        }
+        assert_same(true, file_exists(support_dir() . '/' . $fields[1]), "missing support source for $line");
+    }
+}
+
+function run_runner_cli(string $arguments): int
+{
+    exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(dirname(__DIR__) . '/runner.php') . ' ' . $arguments . ' 2>&1', $out, $code);
+    return $code;
+}
+
+function test_runner_copies_support_files_into_working_directory(): void
+{
+    if (!runner_environment_supported(__FUNCTION__)) {
+        return;
+    }
+    $dir = sys_get_temp_dir() . '/ev-runner-' . uniqid();
+    mkdir($dir);
+    $batch = ['tag' => 'host', 'extensions' => ['standard'], 'examples' => [
+        ['page' => 'p', 'example' => 'books', 'code' => "<?php echo substr_count(file_get_contents('examples/book-simple.xml'), '<book>');", 'annotations' => '', 'expected' => '3', 'extension' => 'standard'],
+    ]];
+    file_put_contents("$dir/batch.json", json_encode($batch));
+    assert_same(0, run_runner_cli("run $dir/batch.json $dir/results.json"));
+    assert_same('pass', json_decode(file_get_contents("$dir/results.json"), true)['results'][0]['status']);
+}
+
+function test_runner_rerun_skipped_replaces_only_skipped_results(): void
+{
+    if (!runner_environment_supported(__FUNCTION__)) {
+        return;
+    }
+    $dir = sys_get_temp_dir() . '/ev-runner-' . uniqid();
+    mkdir($dir);
+    $batch = ['tag' => '5.3.29', 'extensions' => ['standard'], 'examples' => [
+        ['page' => 'p', 'example' => 'ran', 'code' => "<?php echo 'a';", 'annotations' => '', 'expected' => 'a', 'extension' => 'standard'],
+        ['page' => 'p', 'example' => 'skipped', 'code' => "<?php echo 'b';", 'annotations' => '', 'expected' => 'b', 'extension' => 'standard'],
+        ['page' => 'p', 'example' => 'still-missing', 'code' => "<?php", 'annotations' => '', 'expected' => null, 'extension' => 'no_such_ext'],
+    ]];
+    $previous = ['tag' => '5.3.29', 'results' => [
+        ['page' => 'p', 'example' => 'ran', 'status' => 'warning'],
+        ['page' => 'p', 'example' => 'skipped', 'status' => 'skipped-extension'],
+        ['page' => 'p', 'example' => 'still-missing', 'status' => 'skipped-extension'],
+    ]];
+    file_put_contents("$dir/batch.json", json_encode($batch));
+    file_put_contents("$dir/results.json", json_encode($previous));
+    assert_same(0, run_runner_cli("rerun-skipped $dir/batch.json $dir/results.json 5.5.38"));
+    $results = json_decode(file_get_contents("$dir/results.json"), true);
+    assert_same('5.3.29', $results['tag']);
+    assert_same(['warning', 'pass', 'skipped-extension'], array_column($results['results'], 'status'));
+    assert_same('5.5.38', $results['results'][1]['fallback_tag']);
+    assert_same(false, isset($results['results'][2]['fallback_tag']));
+}
+
+function test_runner_rerun_skipped_rejects_mismatched_results(): void
+{
+    $dir = sys_get_temp_dir() . '/ev-runner-' . uniqid();
+    mkdir($dir);
+    file_put_contents("$dir/batch.json", json_encode(['tag' => 't', 'examples' => [['page' => 'p']]]));
+    file_put_contents("$dir/results.json", json_encode(['tag' => 't', 'results' => []]));
+    assert_same(1, run_runner_cli("rerun-skipped $dir/batch.json $dir/results.json 5.5.38"));
+}

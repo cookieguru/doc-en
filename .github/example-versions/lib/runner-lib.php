@@ -93,14 +93,45 @@ function extension_is_loaded($extension)
         || (isset($aliases[$extension]) && extension_loaded($aliases[$extension]));
 }
 
-function execute_example($code, $nonInteractive, $directory)
+function copy_tree($source, $target)
+{
+    if (!is_dir($source)) {
+        copy($source, $target);
+        return;
+    }
+    mkdir($target);
+    foreach (scandir($source) as $entry) {
+        if ($entry !== '.' && $entry !== '..') {
+            copy_tree($source . '/' . $entry, $target . '/' . $entry);
+        }
+    }
+}
+
+function support_entries_for($code, $supportDir)
+{
+    $entries = array();
+    if (!is_dir($supportDir)) {
+        return $entries;
+    }
+    foreach (scandir($supportDir) as $entry) {
+        if ($entry !== '.' && $entry !== '..' && strpos($code, $entry) !== false) {
+            $entries[] = $entry;
+        }
+    }
+    return $entries;
+}
+
+function execute_example($code, $nonInteractive, $directory, $supportDir)
 {
     mkdir($directory);
+    foreach (support_entries_for($code, $supportDir) as $entry) {
+        copy_tree($supportDir . '/' . $entry, $directory . '/' . $entry);
+    }
     file_put_contents($directory . '/example.php', $code);
 
     $flags = $nonInteractive
         ? '-d date.timezone=UTC -l'
-        : '-d date.timezone=UTC -d error_reporting=-1 -d display_errors=stderr -d html_errors=0 -d log_errors=0';
+        : '-d date.timezone=UTC -d phar.readonly=0 -d error_reporting=-1 -d display_errors=stderr -d html_errors=0 -d log_errors=0';
     $descriptors = array(
         0 => array('file', '/dev/null', 'r'),
         1 => array('pipe', 'w'),
@@ -130,27 +161,47 @@ function build_result($example, $status, $exit, $stdout, $stderr)
     return $example;
 }
 
-function run_batch($batch)
+function run_example($example, $directory, $supportDir)
+{
+    if (!extension_is_loaded($example['extension'])) {
+        return build_result($example, 'skipped-extension', null, '', '');
+    }
+    $annotations = isset($example['annotations']) ? $example['annotations'] : '';
+    $outcome = execute_example(
+        $example['code'],
+        strpos($annotations, 'non-interactive') !== false,
+        $directory,
+        $supportDir
+    );
+    $status = $outcome['exit'] === null
+        ? 'error'
+        : classify($outcome['exit'], $outcome['stdout'], $outcome['stderr'], $example['expected'], $annotations);
+    return build_result($example, $status, $outcome['exit'], $outcome['stdout'], $outcome['stderr']);
+}
+
+function run_batch($batch, $supportDir)
 {
     $results = array();
     $workRoot = sys_get_temp_dir() . '/ev-' . getmypid();
     foreach ($batch['examples'] as $n => $example) {
-        if (!extension_is_loaded($example['extension'])) {
-            $results[] = build_result($example, 'skipped-extension', null, '', '');
-            continue;
-        }
-        $annotations = isset($example['annotations']) ? $example['annotations'] : '';
-        $outcome = execute_example(
-            $example['code'],
-            strpos($annotations, 'non-interactive') !== false,
-            $workRoot . '-' . $n
-        );
-        $status = $outcome['exit'] === null
-            ? 'error'
-            : classify($outcome['exit'], $outcome['stdout'], $outcome['stderr'], $example['expected'], $annotations);
-        $results[] = build_result($example, $status, $outcome['exit'], $outcome['stdout'], $outcome['stderr']);
+        $results[] = run_example($example, $workRoot . '-' . $n, $supportDir);
     }
     return array('tag' => $batch['tag'], 'results' => $results);
+}
+
+function rerun_skipped($batch, $previous, $fallbackTag, $supportDir)
+{
+    $workRoot = sys_get_temp_dir() . '/ev-' . getmypid();
+    foreach ($previous['results'] as $n => $result) {
+        $example = $batch['examples'][$n];
+        if ($result['status'] !== 'skipped-extension' || !extension_is_loaded($example['extension'])) {
+            continue;
+        }
+        $rerun = run_example($example, $workRoot . '-' . $n, $supportDir);
+        $rerun['fallback_tag'] = $fallbackTag;
+        $previous['results'][$n] = $rerun;
+    }
+    return $previous;
 }
 
 function mark_unavailable($batch)
