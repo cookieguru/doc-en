@@ -123,10 +123,7 @@ jobs:
       - name: "Pull php:${{ matrix.tag }}-cli"
         id: "pull"
         run: |
-          if docker pull php:${{ matrix.tag }}-cli \
-            || skopeo copy --format v2s2 \
-              docker://docker.io/library/php:${{ matrix.tag }}-cli \
-              docker-daemon:php:${{ matrix.tag }}-cli; then
+          if en/.github/example-versions/pull-image.sh ${{ matrix.tag }}; then
             echo ok=1 >> "$GITHUB_OUTPUT"
           fi
 
@@ -157,7 +154,7 @@ jobs:
           if [ -z "$extensions" ]; then
             exit 0
           fi
-          docker pull php:${FALLBACK_TAG}-cli
+          en/.github/example-versions/pull-image.sh "$FALLBACK_TAG"
           en/.github/example-versions/build-image.sh php:${FALLBACK_TAG}-cli ev-fallback $extensions
           docker run --rm --network none \
             -v "$PWD/en/.github/example-versions:/ev:ro" \
