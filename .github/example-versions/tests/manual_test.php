@@ -49,6 +49,36 @@ function test_group_into_batches_collects_extensions_and_unresolved(): void
     assert_same('c', $grouped['unresolved'][0]['page']);
 }
 
+function test_group_into_latest_batches_runs_everything_on_the_newest_tag_of_each_minor(): void
+{
+    $records = [
+        ['minimum' => '5.3.0', 'extension' => 'standard', 'page' => 'a'],
+        ['minimum' => '8.5.0', 'extension' => 'dom', 'page' => 'b'],
+        ['minimum' => '8.6.0', 'extension' => 'uri', 'page' => 'c'],
+    ];
+    $available = ['8.5.2', '8.5.13', '8.6.0RC1', '8.4.28'];
+    $grouped = group_into_latest_batches($records, $available, ['8.5', '8.6']);
+
+    assert_same(['8.5.13', '8.6.0RC1'], array_keys($grouped['batches']));
+    assert_same(['a', 'b'], array_column($grouped['batches']['8.5.13']['examples'], 'page'));
+    assert_same(['dom', 'standard'], $grouped['batches']['8.5.13']['extensions']);
+    assert_same(['a', 'b', 'c'], array_column($grouped['batches']['8.6.0RC1']['examples'], 'page'));
+    assert_same('8.6.0RC1', $grouped['batches']['8.6.0RC1']['examples'][2]['tag']);
+    assert_same(false, $grouped['batches']['8.5.13']['examples'][0]['substituted']);
+    assert_same([], $grouped['unresolved']);
+}
+
+function test_group_into_latest_batches_fails_when_a_minor_has_no_tag(): void
+{
+    try {
+        group_into_latest_batches([['minimum' => '5.3.0', 'extension' => 'standard']], ['8.5.13'], ['8.7']);
+    } catch (InvalidArgumentException $e) {
+        assert_same('No PHP image tag found for 8.7', $e->getMessage());
+        return;
+    }
+    throw new RuntimeException('Expected an InvalidArgumentException');
+}
+
 function test_iterate_examples_visits_adjacent_refentries(): void
 {
     $entry = fn ($id) => "<refentry xml:id=\"$id\"><refnamediv><refname>$id</refname></refnamediv>"

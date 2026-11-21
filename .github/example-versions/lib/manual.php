@@ -123,11 +123,46 @@ function group_into_batches(array $records, array $available): array
         $batches[$tag]['examples'][] = $record + ['tag' => $tag, 'substituted' => $resolved['substituted']];
     }
 
+    return ['batches' => finalize_batches($batches), 'unresolved' => $unresolved];
+}
+
+function group_into_latest_batches(array $records, array $available, array $minors): array
+{
+    $batches = [];
+
+    foreach ($minors as $minor) {
+        $inMinor = array_values(array_filter(
+            $available,
+            fn (string $version): bool => str_starts_with($version, $minor . '.'),
+        ));
+        usort($inMinor, 'version_compare');
+        $resolved = newest_tag($inMinor);
+        if ($resolved === null) {
+            throw new InvalidArgumentException("No PHP image tag found for $minor");
+        }
+
+        $tag = $resolved['tag'];
+        $batches[$tag] = ['tag' => $tag, 'extensions' => [], 'examples' => []];
+        foreach ($records as $record) {
+            $minimumMinor = implode('.', array_slice(explode('.', $record['minimum']), 0, 2));
+            if (version_compare($minimumMinor, $minor, '>')) {
+                continue;
+            }
+            array_push($batches[$tag]['extensions'], ...($record['requires'] ?? [$record['extension']]));
+            $batches[$tag]['examples'][] = $record + ['tag' => $tag, 'substituted' => false];
+        }
+    }
+
+    return ['batches' => finalize_batches($batches), 'unresolved' => []];
+}
+
+function finalize_batches(array $batches): array
+{
     foreach ($batches as &$batch) {
         $batch['extensions'] = array_values(array_unique($batch['extensions']));
         sort($batch['extensions']);
     }
     unset($batch);
 
-    return ['batches' => $batches, 'unresolved' => $unresolved];
+    return $batches;
 }

@@ -51,11 +51,22 @@ function main(array $options): void
         parse_only($options['only'] ?? null),
     );
 
+    $latest = parse_only($options['latest'] ?? null);
+    foreach ($latest ?? [] as $minor) {
+        if (preg_match('/^\d+\.\d+$/', $minor) !== 1) {
+            fwrite(STDERR, "Invalid --latest minor version: $minor\n");
+            exit(2);
+        }
+    }
+
+    $minors = $latest ?? array_values(array_unique(array_map(fn (array $record): string => minor_of($record['minimum']), $records)));
     $available = isset($options['tags-file'])
         ? json_decode(file_get_contents($options['tags-file']), true, flags: JSON_THROW_ON_ERROR)
-        : fetch_available_tags(array_values(array_unique(array_map(fn (array $record): string => minor_of($record['minimum']), $records))));
+        : fetch_available_tags($minors);
 
-    $grouped = group_into_batches($records, $available);
+    $grouped = $latest === null
+        ? group_into_batches($records, $available)
+        : group_into_latest_batches($records, $available, $latest);
 
     if (!is_dir($options['out'])) {
         mkdir($options['out'], 0777, true);
@@ -74,4 +85,4 @@ function main(array $options): void
     printf("%d examples, %d tags, %d unresolved\n", count($records), count($grouped['batches']), count($grouped['unresolved']));
 }
 
-main(getopt('', ['manual:', 'reference:', 'out:', 'only::', 'tags-file:']));
+main(getopt('', ['manual:', 'reference:', 'out:', 'only::', 'latest::', 'tags-file:']));

@@ -9,6 +9,10 @@ on:
         description: "Comma-separated extension or page filter (empty for everything)"
         type: "string"
         default: ""
+      latest:
+        description: "Comma-separated PHP minor versions to run every example on, such as 8.5,8.6 (empty to run each example on its documented minimum)"
+        type: "string"
+        default: ""
       fixtures_only:
         description: "Use the bundled fixtures instead of building the manual"
         type: "boolean"
@@ -59,6 +63,7 @@ jobs:
       - name: "Extract examples"
         env:
           ONLY: "${{ inputs.only }}"
+          LATEST: "${{ inputs.latest }}"
         run: |
           if [ "${{ inputs.fixtures_only }}" = "true" ]; then
             manual=en/.github/example-versions/fixtures/manual.xml
@@ -71,7 +76,8 @@ jobs:
             --manual="$manual" \
             --reference="$reference" \
             --out=out \
-            --only="$ONLY"
+            --only="$ONLY" \
+            --latest="$LATEST"
 
       - name: "Upload batches"
         uses: "actions/upload-artifact@v7.0.2"
