@@ -53,7 +53,7 @@ var_dump($s2);
     &example.outputs;
     <screen>
 <![CDATA[
-string(45) "C:11:"ArrayObject":21:{x:i:0;a:0:{};m:a:0:{}}"
+string(57) "O:11:"ArrayObject":4:{i:0;i:0;i:1;a:0:{}i:2;a:0:{}i:3;N;}"
 string(21) "x:i:0;a:0:{};m:a:0:{}"
 ]]>
     </screen>
