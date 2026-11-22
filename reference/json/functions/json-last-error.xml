@@ -211,7 +211,7 @@ var_dump($json, $error === JSON_ERROR_UTF8);
     &example.outputs;
     <screen>
 <![CDATA[
-string(4) "null"
+bool(false)
 bool(true)
 ]]>
     </screen>
