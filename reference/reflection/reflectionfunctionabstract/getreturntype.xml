@@ -61,7 +61,7 @@ int
 <![CDATA[
 <?php
 
-$reflection2 = new ReflectionFunction('array_merge');
+$reflection2 = new ReflectionFunction('set_error_handler');
 
 var_dump($reflection2->getReturnType());
 ]]>
@@ -75,9 +75,9 @@ null
    </example>
   </para>
   <para>
-   This is because many internal functions do not have types specified for their
-   parameters or return values. It is therefore best to avoid using this
-   method on built-in functions.
+   This is because some internal functions, such as
+   <function>set_error_handler</function>, do not declare a return type.  It is
+   therefore best to avoid relying on this method for built-in functions.
   </para>
  </refsect1>
 
