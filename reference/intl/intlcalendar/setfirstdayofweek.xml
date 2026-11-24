@@ -91,7 +91,7 @@ ini_set('date.timezone', 'Europe/Lisbon');
 ini_set('intl.default_locale', 'es_ES');
 
 $cal = IntlCalendar::createInstance();
-$cal->set(2013, 5 /* June */, 30); // A Sunday
+$cal->setDate(2013, 5 /* June */, 30); // A Sunday
 
 var_dump($cal->getFirstDayOfWeek()); // 2 (Monday)
 

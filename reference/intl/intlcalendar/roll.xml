@@ -83,7 +83,7 @@ $cal = IntlGregorianCalendar::createFromDate(2013, 5 /* June */, 30);
 $cal->add(IntlCalendar::FIELD_DAY_OF_MONTH, 1);
 var_dump(IntlDateFormatter::formatObject($cal)); // "01/07/2013, 00:00:00"
 
-$cal->set(2013, 5 /* June */, 30);
+$cal->setDate(2013, 5 /* June */, 30);
 $cal->roll(IntlCalendar::FIELD_DAY_OF_MONTH, true); // roll up, same as rolling +1
 var_dump(IntlDateFormatter::formatObject($cal)); // "01/06/2013, 00:00:00"
 ]]>
