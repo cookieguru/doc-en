@@ -61,13 +61,13 @@
 ini_set('date.timezone', 'Europe/Lisbon');
 ini_set('intl.default_locale', 'pt_PT');
 
-$cal = new IntlGregorianCalendar(2013, 6 /* July */, 1, 4, 56, 31);
+$cal = IntlGregorianCalendar::createFromDateTime(2013, 6 /* July */, 1, 4, 56, 31);
 var_dump($cal->inDaylightTime()); // true
 $cal->set(IntlCalendar::FIELD_MONTH, 11 /* December */);
 var_dump($cal->inDaylightTime()); // false
 
 //DST end transition on 2013-10-27 at 0200 (wall time back 1 hour)
-$cal = new IntlGregorianCalendar(2013, 9 /* October */, 27, 1, 30, 0);
+$cal = IntlGregorianCalendar::createFromDateTime(2013, 9 /* October */, 27, 1, 30, 0);
 
 var_dump($cal->inDaylightTime()); // false (default WALLTIME_LAST)
 

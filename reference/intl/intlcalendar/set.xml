@@ -180,13 +180,13 @@ ini_set('date.timezone', 'Europe/Lisbon');
 ini_set('intl.default_locale', 'pt_PT');
 
 //Calls made later have priority
-$cal = new IntlGregorianCalendar(2013, 6 /* July */, 1);
+$cal = IntlGregorianCalendar::createFromDate(2013, 6 /* July */, 1);
 $cal->set(IntlCalendar::FIELD_YEAR, 2012);
 $cal->set(IntlCalendar::FIELD_EXTENDED_YEAR, 2011);
 var_dump(IntlDateFormatter::formatObject($cal));
 
 
-$cal = new IntlGregorianCalendar(2013, 6 /* July */, 1);
+$cal = IntlGregorianCalendar::createFromDate(2013, 6 /* July */, 1);
 $cal->set(IntlCalendar::FIELD_YEAR, 2012);
 $cal->set(IntlCalendar::FIELD_EXTENDED_YEAR, 2011);
 //the time has not been recalculated yet. If we clear the extended year,

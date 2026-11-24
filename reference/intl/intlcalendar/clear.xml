@@ -125,7 +125,7 @@ function getSetFields(IntlCalendar $cal) {
     return $ret;
 }
 
-$cal = new IntlGregorianCalendar(2013, 2 /* March */, 15);
+$cal = IntlGregorianCalendar::createFromDate(2013, 2 /* March */, 15);
 echo "After GregorianCalendar creation\n";
 print_r(getSetFields($cal));
 echo "\n";

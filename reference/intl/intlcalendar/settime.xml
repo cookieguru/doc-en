@@ -71,7 +71,7 @@
 ini_set('date.timezone', 'Europe/Lisbon');
 ini_set('intl.default_locale', 'fr_FR');
 
-$cal = new IntlGregorianCalendar(2013, 5 /* May */, 1, 12, 0, 0);
+$cal = IntlGregorianCalendar::createFromDateTime(2013, 5 /* May */, 1, 12, 0, 0);
 
 echo IntlDateFormatter::formatObject($cal, IntlDateFormatter::FULL), "\n";
 
