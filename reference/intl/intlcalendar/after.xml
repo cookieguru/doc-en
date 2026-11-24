@@ -72,7 +72,7 @@ $cal2 = clone $cal1;
 var_dump($cal1->after($cal2), //false
         $cal2->after($cal1)); //false
 
-$cal1->roll(IntlCalendar::FIELD_MILLISECOND, true);
+$cal1->roll(IntlCalendar::FIELD_MILLISECOND, 1);
 
 var_dump($cal1->after($cal2), //true
         $cal2->after($cal1)); //false
