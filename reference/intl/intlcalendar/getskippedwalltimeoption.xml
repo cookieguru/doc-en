@@ -69,7 +69,6 @@
 <?php
 ini_set('date.timezone', 'Europe/Lisbon');
 ini_set('intl.default_locale', 'en_US');
-ini_set('intl.error_level', E_WARNING);
 
 //On March 31st at 0100, the clock goes forward 1 hour and from GMT+00 to GMT+01
 $cal = IntlGregorianCalendar::createFromDateTime(2013, 2 /* March */, 31, 1, 30);

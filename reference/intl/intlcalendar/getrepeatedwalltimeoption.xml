@@ -63,7 +63,6 @@
 <?php
 ini_set('date.timezone', 'Europe/Lisbon');
 ini_set('intl.default_locale', 'en_US');
-ini_set('intl.error_level', E_WARNING);
 
 //On October 27th at 0200, the clock goes back 1 hour and from GMT+01 to GMT+00
 $cal = IntlGregorianCalendar::createFromDateTime(2013, 9 /* October */, 27, 1, 30);
