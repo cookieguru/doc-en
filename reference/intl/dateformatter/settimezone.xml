@@ -97,7 +97,7 @@
 <?php
 ini_set('date.timezone', 'Europe/Amsterdam');
 
-$formatter = IntlDateFormatter::create(NULL, NULL, NULL, "UTC");
+$formatter = IntlDateFormatter::create(NULL, IntlDateFormatter::FULL, IntlDateFormatter::FULL, "UTC");
 
 $formatter->setTimeZone(NULL);
 echo "NULL\n    ", $formatter->getTimeZone()->getId(), "\n";
